@@ -32,18 +32,14 @@ user_data_db_ohio = """#!/bin/bash
                     sudo apt install postgresql postgresql-contrib -y
                     sudo -u postgres psql -c "CREATE USER cloud WITH PASSWORD 'cloud';"
                     sudo -u postgres createdb -O cloud tasks
-                    sudo sed -i "/#listen_addresses = 'localhost'/ a\listen_addresses='*'" /etc/postgresql/10/main/postgresql.conf
-                    sudo sed -i "/local replication all peer/ a\host all all 0.0.0.0/0 md5" /etc/postgresql/10/main/pg_hba.conf
+                    sudo sed -i "59 c listen_addresses='*'" /etc/postgresql/10/main/postgresql.conf
+                    sudo sed -i "$ a host all all 0.0.0.0/0 trust" /etc/postgresql/10/main/pg_hba.conf
                     sudo ufw allow 5432/tcp
                     sudo systemctl restart postgresql 
                     """
 
-# sed -i "59 c listen_addresses='*'" /etc/postgresql/12/main/postgresql.conf
-# sed -i "$ a host all all 0.0.0.0/0 trust" /etc/postgresql/12/main/pg_hba.conf
-
 user_data_django_nv = """#!/bin/bash
                 sudo apt update
-                sudo apt install python3-dev libpq-dev python3-pip -y
                 cd /home/ubuntu
                 git clone https://github.com/raulikeda/tasks.git
                 sudo sed -i 's/node1/{0}/g' /home/ubuntu/tasks/portfolio/settings.py
@@ -102,17 +98,13 @@ def createKeyPair(client, key_name):
 def saveKeyPair(key, filename):
     print("------------ Saving Keys ------------\n")
     if filename in os.listdir():
-        # os.remove(filename) # -> erro de PermissionError: [WinError 5] Acesso negado: 'LucasMuchaluat_Key.pem'
-        print("Chave já criada e salva\n")
-    else:
-        with open(filename, "w") as new_file:
-            new_file.write(key['KeyMaterial'])
-        # outfile = open(filename, "w")
-        # outfile.write(str(key.key_material))
-        print(f"Par de chaves {filename} criada e salva nos arquivos\n")
+        os.remove(filename)
+    with open(filename, "w") as new_file:
+        new_file.write(key['KeyMaterial'])
+    print(f"Par de chaves {filename} criada e salva nos arquivos\n")
 
-        os.chmod(filename, 0o400)
-        print(f"Par de chaves {filename} invisível publicamente\n")
+    os.chmod(filename, 0o400)
+    print(f"Par de chaves {filename} invisível publicamente\n")
 
 
 # create instance
@@ -320,6 +312,7 @@ def createLoadBalancer(client, clientGeral, group_name):
                     {
                         'Protocol': 'tcp',
                         'LoadBalancerPort': 8080,
+                        'InstanceProtocol': 'tcp',
                         'InstancePort': 8080,
                     },
                 ],
@@ -438,7 +431,7 @@ def configOhio():
     deleteSecurityGroup(ohioClient, security_group_name_ohio)
 
     key = createKeyPair(ohioClient, key_pair_name_ohio)
-    saveKeyPair(key, key_filename_nv)
+    saveKeyPair(key, key_filename_ohio)
     createSecurityGroup(ohioClient, security_group_name_ohio, 5432)
 
     databaseID = createInstance(ohioResource, ohioClient, ohioAMI,

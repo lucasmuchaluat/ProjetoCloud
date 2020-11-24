@@ -41,7 +41,7 @@ user_data_db_ohio = """#!/bin/bash
 user_data_django_nv = """#!/bin/bash
                 sudo apt update
                 cd /home/ubuntu
-                git clone https://github.com/raulikeda/tasks.git
+                git clone https://github.com/lucasmuchaluat/tasks.git
                 sudo sed -i 's/node1/{0}/g' /home/ubuntu/tasks/portfolio/settings.py
                 cd tasks
                 ./install.sh
@@ -143,7 +143,7 @@ def createInstance(resource, client, image_id, key_pair, securityGroup_name, use
     )
 
     print(f"Aguardando a instancia {instance[0].id} ser criada...\n")
-    waiter = client.get_waiter('instance_running')
+    waiter = client.get_waiter('instance_running') #instance_status_ok
     waiter.wait(InstanceIds=[instance[0].id])
 
     print(f"A instancia {instance} foi criada com sucesso!\n")
@@ -204,7 +204,7 @@ def terminateInstance(resource, client):
                 )
                 print(
                     f"Aguardando a instancia {instance.id} ser encerrada...\n")
-                waiter = client.get_waiter('instance_terminated')
+                waiter = client.get_waiter('instance_terminated') #instance_stopped
                 waiter.wait(InstanceIds=[instance.id])
                 print(
                     f"A instancia {instance.id} foi encerrada com sucesso!\n")
@@ -306,7 +306,7 @@ def createLoadBalancer(client, clientGeral, group_name):
         idSecurityGroup = clientGeral.describe_security_groups(
             GroupNames=[group_name])["SecurityGroups"][0]["GroupId"]
         try:
-            client.create_load_balancer(
+            lb = client.create_load_balancer(
                 LoadBalancerName=load_balancer_name,
                 Listeners=[
                     {
@@ -340,6 +340,8 @@ def createLoadBalancer(client, clientGeral, group_name):
             )
             print(
                 f"Load Balancer criado com sucesso com nome de {load_balancer_name}.\n")
+            
+            return lb
         except:
             print(
                 f"Não foi possível localizar Security Group chamado {group_name}.\n")
@@ -347,6 +349,24 @@ def createLoadBalancer(client, clientGeral, group_name):
         print(
             f"Não foi possível criar Load Balancer chamado {load_balancer_name}.\n")
 
+# fill load balancer dns in client
+
+def writeLoadBalancerDNS(loadBalancer, clientFile):  
+    print("------------ Writing Load Balancer DNS on client ------------\n")
+    url = f'"http://{loadBalancer.get("DNSName", None)}:8080/tasks/"'
+    try:
+        with open(clientFile, "r") as f:
+            file = f.readlines()
+            file[4] = "urlLB =" + url + "\n"
+            
+        with open(clientFile, "w") as f:
+            f.writelines(file)
+
+        print(
+            f"DNS {url} escrito no client com sucesso!\n")
+    except:
+        print(
+            f"Não foi possível escrever o DNS {url} no client.\n")
 
 # delete load balancer
 
@@ -457,7 +477,8 @@ createSecurityGroup(nvClient, security_group_name_nv, 8080)
 djangoID = createInstance(nvResource, nvClient, nvAMI,
                           key_pair_name_nv, security_group_name_nv, user_data_django_nv.format(configOhio()))
 
-createLoadBalancer(lbClient, nvClient, security_group_name_nv)
+lb = createLoadBalancer(lbClient, nvClient, security_group_name_nv)
+writeLoadBalancerDNS(lb, "client.py")
 createAutoScalingGroup(asgClient, djangoID)
 print("------------ FIM NORTH VIRGINIA ------------\n")
 end = time.time()

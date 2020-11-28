@@ -23,8 +23,8 @@ load_balancer_name = name + "-LoadBalancer"
 
 auto_scaling_group_name = name + "-AutoScalingGroup"
 
-ohioAMI = "ami-0d2af6604100129b5"
-nvAMI = "ami-01c56ad2021bbfc87"
+ohioAMI = "ami-0dd9f0e7df0f0a138"
+nvAMI = "ami-00ddb0e5626798373" 
 
 
 user_data_db_ohio = """#!/bin/bash
@@ -70,8 +70,6 @@ lbClient = session.client('elb', region_name='us-east-1')
 asgClient = session.client('autoscaling', region_name='us-east-1')
 
 # create key pair
-
-
 def createKeyPair(client, key_name):
     print("------------ Creating Keys ------------\n")
     # deletar caso ja exista
@@ -92,9 +90,8 @@ def createKeyPair(client, key_name):
     except ClientError as e:
         print(e)
 
+
 # save key pair
-
-
 def saveKeyPair(key, filename):
     print("------------ Saving Keys ------------\n")
     if filename in os.listdir():
@@ -135,7 +132,7 @@ def createInstance(resource, client, image_id, key_pair, securityGroup_name, use
                     },
                     {
                         'Key': 'Name',
-                        'Value': "INSTANCE-TEST"
+                        'Value': "INSTANCE"
                     },
                 ]
             },
@@ -151,6 +148,7 @@ def createInstance(resource, client, image_id, key_pair, securityGroup_name, use
     return instance[0].id
 
 
+# get instance ip
 def getInstanceIP(resource, instance_id):
     print("------------ Getting Instance IP ------------\n")
     running_instances = resource.instances.filter(
@@ -176,8 +174,6 @@ def getInstanceIP(resource, instance_id):
 
 
 # terminate instance
-
-
 def terminateInstance(resource, client):
     print("------------ Deleting Instance ------------\n")
 
@@ -210,14 +206,12 @@ def terminateInstance(resource, client):
                     f"A instancia {instance.id} foi encerrada com sucesso!\n")
             except ClientError as e:
                 print(
-                    f"Não foi possível terminar qualquer instância. Error: {e}\n")
+                    f"Não foi possível terminar nenhuma instância. Erro: {e}\n")
     else:
         print(f"Não há nenhuma instância rodando no momento.\n")
 
 
 # create security group
-
-
 def createSecurityGroup(client, group_name, porta):
     print("------------ Creating Security Group ------------\n")
     try:
@@ -240,7 +234,7 @@ def createSecurityGroup(client, group_name, porta):
                         },
                         {
                             'Key': 'Name',
-                            'Value': "SG-TEST"
+                            'Value': "SG"
                         },
                     ]
                 },
@@ -248,7 +242,7 @@ def createSecurityGroup(client, group_name, porta):
         )
 
         try:
-            # Permitir porta 8080
+            # Permitir porta 5432 ou 8080
             client.authorize_security_group_ingress(
                 GroupName=group_name,
                 IpPermissions=[
@@ -274,15 +268,14 @@ def createSecurityGroup(client, group_name, porta):
 
         except ClientError as e:
             print(
-                f"Não foi possível criar regra de ingresso para {group_name}. Error: {e}\n")
+                f"Não foi possível criar regra de ingresso para {group_name}. Erro: {e}\n")
 
     except ClientError as e:
         print(
-            f"Não foi possível criar security group {group_name}'. Error: {e}\n")
+            f"Não foi possível criar security group {group_name}. Erro: {e}\n")
+
 
 # delete security group
-
-
 def deleteSecurityGroup(client, group_name):
     print("------------ Deleting Security Group ------------\n")
     try:
@@ -292,14 +285,13 @@ def deleteSecurityGroup(client, group_name):
             print(f"Security group {group_name} deletado com sucesso.\n")
         except ClientError as e:
             print(
-                f"Não foi possível deletar o security group {group_name}. Error: {e}\n")
+                f"Não foi possível deletar o security group {group_name}. Erro: {e}\n")
     except ClientError as e:
         print(
             f"Security Group com nome de {group_name} não foi encontrado. Erro: {e}\n")
 
+
 # create load balancer
-
-
 def createLoadBalancer(client, clientGeral, group_name):
     print("------------ Creating Load Balancer ------------\n")
     try:
@@ -334,7 +326,7 @@ def createLoadBalancer(client, clientGeral, group_name):
                     },
                     {
                         'Key': 'Name',
-                        'Value': "LB-TEST"
+                        'Value': "LB"
                     },
                 ]
             )
@@ -349,15 +341,15 @@ def createLoadBalancer(client, clientGeral, group_name):
         print(
             f"Não foi possível criar Load Balancer chamado {load_balancer_name}.\n")
 
-# fill load balancer dns in client
 
+# fill load balancer dns in client
 def writeLoadBalancerDNS(loadBalancer, clientFile):  
     print("------------ Writing Load Balancer DNS on client ------------\n")
     url = f'"http://{loadBalancer.get("DNSName", None)}:8080/tasks/"'
     try:
         with open(clientFile, "r") as f:
             file = f.readlines()
-            file[4] = "urlLB =" + url + "\n"
+            file[5] = "urlLB =" + url + "\n"
             
         with open(clientFile, "w") as f:
             f.writelines(file)
@@ -368,8 +360,8 @@ def writeLoadBalancerDNS(loadBalancer, clientFile):
         print(
             f"Não foi possível escrever o DNS {url} no client.\n")
 
-# delete load balancer
 
+# delete load balancer
 def deleteLoadBalancer(client):
     print("------------ Deleting Load Balancer ------------\n")
     try:
@@ -413,9 +405,8 @@ def createAutoScalingGroup(client, instance_id):
         print(
             f"Não foi possível criar Auto Scaling Group chamado {auto_scaling_group_name}. Erro: {e}.\n")
 
+
 # delete auto scaling group
-
-
 def deleteAutoScalingGroup(client):
     print("------------ Deleting Auto Scaling Group ------------\n")
     try:
@@ -430,6 +421,7 @@ def deleteAutoScalingGroup(client):
             f"Não foi possível deletar o Auto Scaling Group chamado {auto_scaling_group_name}. Erro: {e}\n")
 
 
+# delete launch configuration
 def deleteLauchConfiguration(client, asgName):
     print("------------ Deleting Launch Configuration ------------\n")
     try:
@@ -444,7 +436,6 @@ def deleteLauchConfiguration(client, asgName):
 
 
 # ohio setup
-
 def configOhio():
     print("------------ OHIO ------------\n")
     terminateInstance(ohioResource, ohioClient)
@@ -462,25 +453,32 @@ def configOhio():
     return databaseIP
 
 
+# north virginia setup
+def configNV(ipOhio):
+    print("------------ NORTH VIRGINIA ------------\n")
+    deleteAutoScalingGroup(asgClient)
+    deleteLauchConfiguration(asgClient, auto_scaling_group_name)
+    deleteLoadBalancer(lbClient)
+    terminateInstance(nvResource, nvClient)
+    deleteSecurityGroup(nvClient, security_group_name_nv)
+
+    key = createKeyPair(nvClient, key_pair_name_nv)
+    saveKeyPair(key, key_filename_nv)
+    createSecurityGroup(nvClient, security_group_name_nv, 8080)
+
+    djangoID = createInstance(nvResource, nvClient, nvAMI,
+                            key_pair_name_nv, security_group_name_nv, user_data_django_nv.format(ipOhio))
+
+    lb = createLoadBalancer(lbClient, nvClient, security_group_name_nv)
+    writeLoadBalancerDNS(lb, "client.py")
+    createAutoScalingGroup(asgClient, djangoID)
+    print("------------ FIM NORTH VIRGINIA ------------\n")
+
+
+# execute all
 start = time.time()
-print("------------ NORTH VIRGINIA ------------\n")
-deleteAutoScalingGroup(asgClient)
-deleteLauchConfiguration(asgClient, auto_scaling_group_name)
-deleteLoadBalancer(lbClient)
-terminateInstance(nvResource, nvClient)
-deleteSecurityGroup(nvClient, security_group_name_nv)
-
-key = createKeyPair(nvClient, key_pair_name_nv)
-saveKeyPair(key, key_filename_nv)
-createSecurityGroup(nvClient, security_group_name_nv, 8080)
-
-djangoID = createInstance(nvResource, nvClient, nvAMI,
-                          key_pair_name_nv, security_group_name_nv, user_data_django_nv.format(configOhio()))
-
-lb = createLoadBalancer(lbClient, nvClient, security_group_name_nv)
-writeLoadBalancerDNS(lb, "client.py")
-createAutoScalingGroup(asgClient, djangoID)
-print("------------ FIM NORTH VIRGINIA ------------\n")
+ipDatabase = configOhio()
+configNV(ipDatabase)
 end = time.time()
 
 print(f"TEMPO DESDE O INÍCIO DA EXECUÇÃO: {round((end - start),2)} segundos.")

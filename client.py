@@ -1,14 +1,15 @@
 import click
 import requests
 import json
+import datetime
 
-urlLB ="http://LucasMuchaluat-LoadBalancer-1872649113.us-east-1.elb.amazonaws.com:8080/tasks/"
+urlLB ="http://LucasMuchaluat-LoadBalancer-2081051230.us-east-1.elb.amazonaws.com:8080/tasks/"
 
 @click.command()
 @click.option('-i', '--instruction', default="GET")
-@click.option('-t', '--title', default="teste")
-@click.option('-pd', '--pub_date', default="2000-11-10T00:00:00Z")
-@click.option('-d', '--description', default="teste desc")
+@click.option('-t', '--title', default="Default Title")
+@click.option('-pd', '--pub_date', default=str(datetime.datetime.now()))
+@click.option('-d', '--description', default="Default Description")
 
 def main(instruction, title, pub_date, description):
     if instruction == "GET":

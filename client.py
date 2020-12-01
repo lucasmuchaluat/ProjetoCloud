@@ -3,7 +3,7 @@ import requests
 import json
 import datetime
 
-urlLB ="http://LucasMuchaluat-LoadBalancer-2081051230.us-east-1.elb.amazonaws.com:8080/tasks/"
+urlLB ="http://LucasMuchaluat-LoadBalancer-505629433.us-east-1.elb.amazonaws.com:8080/tasks/"
 
 @click.command()
 @click.option('-i', '--instruction', default="GET")

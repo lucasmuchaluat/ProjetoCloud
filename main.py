@@ -24,7 +24,7 @@ load_balancer_name = name + "-LoadBalancer"
 auto_scaling_group_name = name + "-AutoScalingGroup"
 
 ohioAMI = "ami-0dd9f0e7df0f0a138"
-nvAMI = "ami-00ddb0e5626798373" 
+nvAMI = "ami-00ddb0e5626798373"
 
 
 user_data_db_ohio = """#!/bin/bash
@@ -70,6 +70,8 @@ lbClient = session.client('elb', region_name='us-east-1')
 asgClient = session.client('autoscaling', region_name='us-east-1')
 
 # create key pair
+
+
 def createKeyPair(client, key_name):
     print("------------ Creating Keys ------------\n")
     # deletar caso ja exista
@@ -140,7 +142,7 @@ def createInstance(resource, client, image_id, key_pair, securityGroup_name, use
     )
 
     print(f"Aguardando a instancia {instance[0].id} ser criada...\n")
-    waiter = client.get_waiter('instance_running') #instance_status_ok
+    waiter = client.get_waiter('instance_running')  # instance_status_ok
     waiter.wait(InstanceIds=[instance[0].id])
 
     print(f"A instancia {instance} foi criada com sucesso!\n")
@@ -190,7 +192,7 @@ def terminateInstance(resource, client):
         ]
     )
 
-    if running_instances:
+    if list(running_instances.limit(1)):
         for instance in running_instances:
             try:
                 client.terminate_instances(
@@ -200,7 +202,8 @@ def terminateInstance(resource, client):
                 )
                 print(
                     f"Aguardando a instancia {instance.id} ser encerrada...\n")
-                waiter = client.get_waiter('instance_terminated') #instance_stopped
+                waiter = client.get_waiter(
+                    'instance_terminated')  # instance_stopped
                 waiter.wait(InstanceIds=[instance.id])
                 print(
                     f"A instancia {instance.id} foi encerrada com sucesso!\n")
@@ -332,7 +335,7 @@ def createLoadBalancer(client, clientGeral, group_name):
             )
             print(
                 f"Load Balancer criado com sucesso com nome de {load_balancer_name}.\n")
-            
+
             return lb
         except:
             print(
@@ -343,14 +346,14 @@ def createLoadBalancer(client, clientGeral, group_name):
 
 
 # fill load balancer dns in client
-def writeLoadBalancerDNS(loadBalancer, clientFile):  
+def writeLoadBalancerDNS(loadBalancer, clientFile):
     print("------------ Writing Load Balancer DNS on client ------------\n")
     url = f'"http://{loadBalancer.get("DNSName", None)}:8080/tasks/"'
     try:
         with open(clientFile, "r") as f:
             file = f.readlines()
             file[5] = "urlLB =" + url + "\n"
-            
+
         with open(clientFile, "w") as f:
             f.writelines(file)
 
@@ -365,6 +368,9 @@ def writeLoadBalancerDNS(loadBalancer, clientFile):
 def deleteLoadBalancer(client):
     print("------------ Deleting Load Balancer ------------\n")
     try:
+        client.describe_load_balancers(
+            LoadBalancerNames=[load_balancer_name]
+        )
         client.delete_load_balancer(
             LoadBalancerName=load_balancer_name
         )
@@ -467,7 +473,7 @@ def configNV(ipOhio):
     createSecurityGroup(nvClient, security_group_name_nv, 8080)
 
     djangoID = createInstance(nvResource, nvClient, nvAMI,
-                            key_pair_name_nv, security_group_name_nv, user_data_django_nv.format(ipOhio))
+                              key_pair_name_nv, security_group_name_nv, user_data_django_nv.format(ipOhio))
 
     lb = createLoadBalancer(lbClient, nvClient, security_group_name_nv)
     writeLoadBalancerDNS(lb, "client.py")
@@ -476,9 +482,11 @@ def configNV(ipOhio):
 
 
 # execute all
-start = time.time()
-ipDatabase = configOhio()
-configNV(ipDatabase)
-end = time.time()
+if __name__ == "__main__":
+    start = time.time()
+    ipDatabase = configOhio()
+    configNV(ipDatabase)
+    end = time.time()
 
-print(f"TEMPO DESDE O INÍCIO DA EXECUÇÃO: {round((end - start),2)} segundos.")
+    print(
+        f"TEMPO DESDE O INÍCIO DA EXECUÇÃO: {round((end - start),2)} segundos.")

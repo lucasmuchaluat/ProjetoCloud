@@ -27,3 +27,8 @@ python3 client.py -i GET
 python3 client.py -i POST -t "{título da task}" -d "{descrição da task}"
 python3 client.py -i DELETE
 ```
+Por questões de custo, após finalizar o uso do serviço, é possível destruir todo o setup levantado para a aplicação. Basta rodar:
+
+```
+python3 terminateAll.py
+```

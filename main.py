@@ -441,6 +441,21 @@ def deleteLauchConfiguration(client, asgName):
             f"Não foi possível deletar o Launch Configuration {asgName}. Erro: {e}\n")
 
 
+# attach LB to ASG
+def attachLB(clientASG, nameLB, nameASG):
+    print("------------ Attaching Load Balancer to Auto Scaling Group ------------\n")
+    try:
+        clientASG.attach_load_balancers(
+            AutoScalingGroupName=nameASG,
+            LoadBalancerNames=[nameLB, ]
+        )
+        print(
+            f"Load Balancer {nameLB} anexado ao ASG {nameASG} com sucesso!\n")
+    except ClientError as e:
+        print(
+            f"Não foi possível anexar o Load Balancer {nameLB} ao ASG {nameASG}. Erro: {e}\n")
+
+
 # ohio setup
 def configOhio():
     print("------------ OHIO ------------\n")
@@ -478,6 +493,7 @@ def configNV(ipOhio):
     lb = createLoadBalancer(lbClient, nvClient, security_group_name_nv)
     writeLoadBalancerDNS(lb, "client.py")
     createAutoScalingGroup(asgClient, djangoID)
+    attachLB(asgClient, load_balancer_name, auto_scaling_group_name)
     print("------------ FIM NORTH VIRGINIA ------------\n")
 
 
